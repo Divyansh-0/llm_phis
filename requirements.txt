@@ -1,0 +1,12 @@
+streamlit
+pandas
+numpy
+scikit-learn
+matplotlib
+seaborn
+pyopenssl
+whois
+python_whois
+tldextract
+bs4
+pyppeteer
