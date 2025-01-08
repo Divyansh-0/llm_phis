@@ -1,21 +1,27 @@
 import socket
 from datetime import datetime
-import dns.resolver
+
 import OpenSSL
 import requests
 import whois
 from bs4 import BeautifulSoup
-from pyppeteer import launch
-import asyncio
+
+import re
+import pandas as pd
 from joblib import load
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.schema import HumanMessage
+import json
+
+VOC = ['com', 'https:', 'www', 'html', 'http:', 'org', 'net', 'cn', 'php', 'index']
 
 def check_url_exists(domain):
     
     model = load("decision_tree_model.pkl")
-    # Simple placeholder feature: domain length
-    features = [len(domain)]
+    dom = preprocess_dataset(domain)
     
-    prediction = model.predict([features])[0]
+    prediction = model.predict(dom.values)[0]
     return "phish" if prediction == 1 else "normal"
 
 
@@ -103,3 +109,82 @@ def extract_elements(url):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+
+
+from sklearn.feature_extraction.text import CountVectorizer
+
+def num_digits(text) -> int:
+    return len(re.findall('\d', text))
+
+def num_dots(text) -> int:
+    return len(re.findall('\.', text))
+
+def num_bar(text) -> int:
+    return len(re.findall('/', text))
+
+
+def preprocess_dataset(url: str):
+    tokens = url.replace('.', ' ').replace('/', ' ')
+    
+
+    vectorizer = load("vectorizer.pkl")
+    row_vec = vectorizer.transform([tokens])
+    row_df = pd.DataFrame(row_vec.toarray(), columns=VOC)
+    row_df['dots'] = [num_dots(url)]
+    row_df['bar'] = [num_bar(url)]
+    row_df['len'] = [len(tokens)]
+    row_df['digits'] = [num_digits(tokens)]
+   
+
+    return row_df
+
+
+def llm_content_check(url):
+    api_key = "AIzaSyD5TagGSNBOnGHrR-oLqQsJPyQvk9cOqEQ"
+    if not api_key:
+        raise ValueError("GOOGLE_API_KEY environment variable is not set.")
+
+    website_content = extract_elements(url)
+    if not website_content:
+        print("Failed to extract website content.")
+        return
+
+    llm = ChatGoogleGenerativeAI(model="gemini-pro", api_key=api_key)
+
+    message = HumanMessage(
+        content=(
+            "You are acting as a Website Validator. "
+            "You are acting as a Website Validator. Your task is to analyze the content of the provided website and determine whether it is legitimate or a scam.\n\n"
+            '''Instructions:
+               1. Carefully review the website content provided below, including its title, text content, links, forms, meta information, and scripts.
+               2. Evaluate the legitimacy of the website based on these factors:
+                  - Professional appearance and structure.
+                  - Informative and relevant content.'''
+            '''Provide the output strictly in JSON format with the following structure:
+                {
+                    "Result": "Scam or Legitimate",
+                    "Reasons": [
+                        "Reason 1",
+                        "Reason 2",
+                        "Reason 3",
+                        "Reason 4",
+                        "Reason 5"
+                    ],
+                    "Conclusion": "A one-liner conclusion summarizing your evaluation"
+                }'''
+
+            f"Website Content:\n{website_content}"
+        )
+    )
+
+    response = llm.invoke([message])
+    response = response.content
+    print(response)
+
+    if response.startswith("```json"):
+        response = response[7:]
+    if response.endswith("```"):
+        response = response[:-3]
+    parsed = json.loads(response)
+    parsed = json.dumps(parsed, indent=4)
+    return parsed

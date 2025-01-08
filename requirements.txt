@@ -9,4 +9,6 @@ whois
 python_whois
 tldextract
 bs4
-pyppeteer
+
+langchain_google_genai
+langchain
