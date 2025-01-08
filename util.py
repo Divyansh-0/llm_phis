@@ -140,7 +140,7 @@ def preprocess_dataset(url: str):
 
 
 def llm_content_check(url):
-    api_key = "AIzaSyD5TagGSNBOnGHrR-oLqQsJPyQvk9cOqEQ"
+    api_key = ""
     if not api_key:
         raise ValueError("GOOGLE_API_KEY environment variable is not set.")
 
