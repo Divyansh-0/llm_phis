@@ -3,14 +3,14 @@ import tldextract
 
 from util import check_url_exists, fetch_tls_certificate, analyze_whois, llm_content_check
 
-# Set page config
+
 st.set_page_config(
     page_title="FraudLLM - Link Analysis",
     layout="centered",
     initial_sidebar_state="expanded"
 )
 
-# Add a header and subtle styling
+
 st.markdown("<h2 style='text-align: center;'>FraudLLM - Link Analysis</h2>", unsafe_allow_html=True)
 st.write("Enter a website link to check its validity, TLS certificate details, and WHOIS information.")
 
@@ -24,11 +24,11 @@ if st.button("Analyze"):
             extracted = tldextract.extract(link)
             domain = f"{extracted.domain}.{extracted.suffix}"
 
-            # Check URL existence
+     
             url_exists = check_url_exists(domain)
             st.write("• URL Exists:", url_exists)
 
-            # Fetch TLS certificate details
+          
             cert_details, cert_error = fetch_tls_certificate(domain)
             if cert_error:
                 st.write("• TLS Certificate Error:", cert_error)
